@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Podpower Tray
+Comment=AirPods pil durumunu tepside göster
+Exec=podpower-tray
+Icon=audio-headphones
+Terminal=false
+Categories=Utility;
