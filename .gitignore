@@ -1,7 +1,6 @@
 .qmake.stash
 Makefile
 *.o
-podpower-tray
 cachyos-airpods-battery-tray
 
 .directory
