@@ -2,7 +2,7 @@
 Version=1.0
 Type=Application
 Name=Podpower Tray
-Comment=AirPods pil durumunu tepside göster
+Comment=Show AirPods battery status in the system tray
 Exec=podpower-tray
 Icon=audio-headphones
 Terminal=false

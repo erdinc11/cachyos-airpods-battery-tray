@@ -1,14 +1,14 @@
 # Podpower Tray
 
-KDE sistem tepsisinde bağlı AirPods ve diğer kulaklıkların pil durumunu gösterir. Tepsi simgesine tıklayınca pil paneli açılır.
+A system tray app for KDE that shows battery levels for connected AirPods and other headphones. Click the tray icon to open the battery panel.
 
-## İndirme
+## Download
 
-Linux x86_64 için hazır sürüm [Releases](../../releases/latest) sayfasındaki `Podpower-Tray-x86_64.AppImage` dosyasıdır. İndirin, çalıştırma izni verin ve çift tıklayın. AppImage Qt dosyalarını içerir; Bluetooth için sistemde BlueZ servisi çalışmalıdır.
+The ready-to-run build for Linux x86_64 is available on the [Releases](../../releases/latest) page as `Podpower-Tray-x86_64.AppImage`. Download it, allow it to run, then double-click it. The AppImage includes Qt runtime files. The BlueZ service must be running for Bluetooth battery readings.
 
-## Derleme
+## Build
 
-Gerekli paketler: Qt 6 Widgets geliştirme dosyaları, qmake6, C++ derleyicisi ve BlueZ geliştirme dosyaları.
+Requirements: Qt 6 Widgets development files, qmake6, a C++ compiler, and BlueZ development files.
 
 ```sh
 qmake6 podpower-tray.pro

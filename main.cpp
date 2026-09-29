@@ -151,15 +151,15 @@ private:
                     const auto &headphone = headphones.front();
                     while (running_) {
                         const auto level = headphoneBatteryPercent(headphone.address);
-                        if (level) publish({headphone.name, QStringLiteral("Pil durumu güncel"), {{QStringLiteral("Kulaklık"), {*level, false}}}, true});
-                        else publish({headphone.name, QStringLiteral("Bağlandı · kulaklık pil bilgisi bekleniyor…"), {}, true});
+                        if (level) publish({headphone.name, QStringLiteral("Battery status is up to date"), {{QStringLiteral("Headphone"), {*level, false}}}, true});
+                        else publish({headphone.name, QStringLiteral("Connected · waiting for headphone battery info…"), {}, true});
                         if (!waitBriefly(1800)) break;
                         const auto stillConnected = commandOutput(QStringLiteral("bluetoothctl"), {QStringLiteral("info"), headphone.address}, 700);
                         if (!stillConnected.contains(QRegularExpression(QStringLiteral(R"(^\s*Connected: yes\s*$)"), QRegularExpression::MultilineOption))) break;
                     }
                     continue;
                 }
-                publish({{}, QStringLiteral("Bağlı kulaklık aranıyor"), {}});
+                publish({{}, QStringLiteral("Searching for connected headphones"), {}});
                 if (!waitBriefly(1200)) break;
                 continue;
             }
@@ -185,7 +185,7 @@ private:
                 }
                 debugLog(QStringLiteral("L2CAP connected %1").arg(address));
                 opened = true;
-                publish({name, QStringLiteral("Bağlandı · pil bilgisi alınıyor…"), {}});
+                publish({name, QStringLiteral("Connected · reading battery info…"), {}});
                 const std::vector<std::vector<unsigned char>> init = {
                     {0x00,0x00,0x04,0x00,0x01,0x00,0x02,0x00,0,0,0,0,0,0,0,0},
                     {0x04,0x00,0x04,0x00,0x4d,0x00,0xff,0x00,0,0,0,0,0,0},
@@ -213,9 +213,9 @@ private:
                             if (at + 4 >= n) break;
                             QString label;
                             switch (frame[at]) {
-                                case 0x02: label = QStringLiteral("Sağ"); break;
-                                case 0x04: label = QStringLiteral("Sol"); break;
-                                case 0x08: label = QStringLiteral("Kutu"); break;
+                                case 0x02: label = QStringLiteral("Right"); break;
+                                case 0x04: label = QStringLiteral("Left"); break;
+                                case 0x08: label = QStringLiteral("Case"); break;
                                 default: continue;
                             }
                             const int status = frame[at + 3];
@@ -225,13 +225,13 @@ private:
                         if (!cells.empty()) {
                             debugLog(QStringLiteral("battery parsed %1").arg(cells.size()));
                             gotBattery = true;
-                            publish({name, QStringLiteral("Pil durumu güncel"), std::move(cells)});
+                            publish({name, QStringLiteral("Battery status is up to date"), std::move(cells)});
                         }
                     }
                     if (wait.revents & (POLLHUP | POLLERR | POLLNVAL)) break;
                     const auto now = std::chrono::steady_clock::now();
                     if (!gotBattery && now - connectedAt > std::chrono::seconds(7)) {
-                        publish({name, QStringLiteral("Pil yanıtı gelmedi · yeniden deneniyor…"), {}});
+                        publish({name, QStringLiteral("No battery response · retrying…"), {}});
                         break;
                     }
                 }
@@ -239,7 +239,7 @@ private:
                 ::shutdown(fd, SHUT_RDWR); ::close(fd);
             }
             if (!running_) break;
-            if (!opened) publish({devices.front().second, QStringLiteral("Bağlı; pil kanalı açılamadı"), {}});
+            if (!opened) publish({devices.front().second, QStringLiteral("Connected; could not open battery channel"), {}});
             if (!waitBriefly(1200)) break;
         }
         socket_.store(-1);
@@ -254,7 +254,7 @@ class BatteryWindow : public QMainWindow {
 public:
     explicit BatteryWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
         setObjectName(QStringLiteral("batteryWindow"));
-        setWindowTitle(QStringLiteral("Podpower — AirPods pil durumu"));
+        setWindowTitle(QStringLiteral("Podpower — AirPods Battery Status"));
         setWindowIcon(QIcon::fromTheme(QStringLiteral("audio-headphones")));
         resize(520, 250);
         setMinimumSize(460, 220);
@@ -264,13 +264,13 @@ public:
         layout_->setContentsMargins(16, 14, 16, 14);
         layout_->setSpacing(8);
         layout_->addStretch(1);
-        title_ = new QLabel(QStringLiteral("AirPods pil durumu"), body);
+        title_ = new QLabel(QStringLiteral("AirPods Battery Status"), body);
         QFont titleFont = title_->font(); titleFont.setPointSize(titleFont.pointSize() + 2); titleFont.setBold(true); title_->setFont(titleFont);
-        status_ = new QLabel(QStringLiteral("Panel açılınca tarama başlayacak"), body);
+        status_ = new QLabel(QStringLiteral("Scanning will start when the panel opens"), body);
         status_->setStyleSheet(QStringLiteral("color: palette(mid);"));
         layout_->addWidget(title_); layout_->addWidget(status_);
         grid_ = new QGridLayout(); grid_->setSpacing(8);
-        const QStringList labels{QStringLiteral("Sol"), QStringLiteral("Sağ"), QStringLiteral("Kutu"), QStringLiteral("Kulaklık")};
+        const QStringList labels{QStringLiteral("Left"), QStringLiteral("Right"), QStringLiteral("Case"), QStringLiteral("Headphone")};
         for (int i = 0; i < labels.size(); ++i) {
             auto *card = new QWidget(body); card->setObjectName(QStringLiteral("batteryCard"));
             auto *cardLayout = new QVBoxLayout(card); cardLayout->setContentsMargins(10,8,10,8); cardLayout->setSpacing(3);
@@ -281,11 +281,11 @@ public:
             cardLayout->addWidget(name); cardLayout->addWidget(value); cardLayout->addWidget(charge);
             grid_->addWidget(card, 0, i < 3 ? i : 0, 1, i < 3 ? 1 : 3);
             cards_[labels[i]] = card;
-            if (labels[i] == QStringLiteral("Kulaklık")) card->hide();
+            if (labels[i] == QStringLiteral("Headphone")) card->hide();
             values_[labels[i]] = value; charging_[labels[i]] = charge;
         }
         layout_->addLayout(grid_);
-        hint_ = new QLabel(QStringLiteral("Tarama yalnızca bu panel açıkken sürer"), body);
+        hint_ = new QLabel(QStringLiteral("Scanning only runs while this panel is open"), body);
         hint_->setStyleSheet(QStringLiteral("color: palette(mid);"));
         hint_->setAlignment(Qt::AlignCenter);
         layout_->addWidget(hint_);
@@ -320,16 +320,16 @@ public:
         status_->setFont(statusFont);
         status_->setStyleSheet(searching ? QStringLiteral("color: palette(text);") : QStringLiteral("color: palette(mid);"));
         hint_->setVisible(!searching);
-        for (const QString &label : {QStringLiteral("Sol"), QStringLiteral("Sağ"), QStringLiteral("Kutu")}) {
+        for (const QString &label : {QStringLiteral("Left"), QStringLiteral("Right"), QStringLiteral("Case")}) {
             cards_[label]->setVisible(!searching && !s.singleBattery);
             values_[label]->setText(QStringLiteral("—")); charging_[label]->clear();
         }
-        cards_[QStringLiteral("Kulaklık")]->setVisible(!searching && s.singleBattery);
-        values_[QStringLiteral("Kulaklık")]->setText(QStringLiteral("—")); charging_[QStringLiteral("Kulaklık")]->clear();
+        cards_[QStringLiteral("Headphone")]->setVisible(!searching && s.singleBattery);
+        values_[QStringLiteral("Headphone")]->setText(QStringLiteral("—")); charging_[QStringLiteral("Headphone")]->clear();
         for (const auto &[label, cell] : s.cells) {
             if (!values_.contains(label)) continue;
             values_[label]->setText(QStringLiteral("%1%").arg(cell.level));
-            charging_[label]->setText(cell.charging ? QStringLiteral("Şarj oluyor") : QString());
+            charging_[label]->setText(cell.charging ? QStringLiteral("Charging") : QString());
         }
     }
 private:
@@ -353,7 +353,7 @@ static bool setAutostart(bool enabled) {
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) return false;
     const QString exe = QCoreApplication::applicationFilePath();
-    const QByteArray data = QStringLiteral("[Desktop Entry]\nType=Application\nName=Podpower Tray\nComment=AirPods pil durumunu göster\nExec=\"%1\"\nIcon=audio-headphones\nTerminal=false\nX-KDE-autostart-after=panel\n").arg(exe).toUtf8();
+    const QByteArray data = QStringLiteral("[Desktop Entry]\nType=Application\nName=Podpower Tray\nComment=Show AirPods battery status in the system tray\nExec=\"%1\"\nIcon=audio-headphones\nTerminal=false\nX-KDE-autostart-after=panel\n").arg(exe).toUtf8();
     return f.write(data) == data.size();
 }
 
@@ -361,7 +361,7 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("Podpower Tray"));
     QCoreApplication::setOrganizationName(QStringLiteral("Local"));
-    if (!QSystemTrayIcon::isSystemTrayAvailable()) { qCritical() << "KDE sistem tepsisi bulunamadı."; return 1; }
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) { qCritical() << "KDE system tray is unavailable."; return 1; }
 
     const QString lockPath = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + QStringLiteral("/podpower-tray.lock");
     QLockFile instanceLock(lockPath);
@@ -370,15 +370,15 @@ int main(int argc, char **argv) {
 
     BatteryWindow batteryWindow;
     QMenu contextMenu;
-    QAction openAction(QStringLiteral("Pil panelini aç"), &contextMenu);
-    QAction startupAction(QStringLiteral("Sistemle birlikte başlat"), &contextMenu);
+    QAction openAction(QStringLiteral("Open battery panel"), &contextMenu);
+    QAction startupAction(QStringLiteral("Launch at login"), &contextMenu);
     startupAction.setCheckable(true); startupAction.setChecked(autostartEnabled());
-    QAction quitAction(QStringLiteral("Tamamen kapat"), &contextMenu);
+    QAction quitAction(QStringLiteral("Quit completely"), &contextMenu);
     contextMenu.addAction(&openAction); contextMenu.addSeparator();
     contextMenu.addAction(&startupAction); contextMenu.addSeparator(); contextMenu.addAction(&quitAction);
     QSystemTrayIcon tray(QIcon::fromTheme(QStringLiteral("audio-headphones")));
     if (tray.icon().isNull()) tray.setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaVolume));
-    tray.setToolTip(QStringLiteral("Podpower · AirPods pil durumu"));
+    tray.setToolTip(QStringLiteral("Podpower · AirPods battery status"));
     tray.setContextMenu(&contextMenu); tray.show();
 
     Scanner scanner([&batteryWindow](ScanState s) { batteryWindow.updateState(s); });
@@ -389,11 +389,11 @@ int main(int argc, char **argv) {
     };
     QObject::connect(&openAction, &QAction::triggered, &app, showPanel);
     QObject::connect(&startupAction, &QAction::toggled, &app, [](bool enabled) {
-        if (!setAutostart(enabled)) qWarning() << "Oturum açılışı ayarı kaydedilemedi.";
+        if (!setAutostart(enabled)) qWarning() << "Could not save the launch-at-login setting.";
     });
     QObject::connect(&quitAction, &QAction::triggered, &app, [&] { scanner.stop(); app.quit(); });
     batteryWindow.setVisibilityHandlers([&] {
-        batteryWindow.updateState({{}, QStringLiteral("Bağlı kulaklık aranıyor"), {}});
+        batteryWindow.updateState({{}, QStringLiteral("Searching for connected headphones"), {}});
         scanner.start();
     }, [&] { scanner.stop(); });
     QObject::connect(&tray, &QSystemTrayIcon::activated, &app, [&](QSystemTrayIcon::ActivationReason reason) {
