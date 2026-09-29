@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Podpower Tray
+Name=CachyOS AirPods Battery Tray
 Comment=Show AirPods battery status in the system tray
-Exec=podpower-tray
+Exec=cachyos-airpods-battery-tray
 Icon=audio-headphones
 Terminal=false
 Categories=Utility;

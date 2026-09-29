@@ -2,6 +2,9 @@
 Makefile
 *.o
 podpower-tray
+cachyos-airpods-battery-tray
 
 .directory
 release/
+
+cachyos-airpods-battery-tray

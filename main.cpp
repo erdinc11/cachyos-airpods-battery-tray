@@ -52,9 +52,9 @@ struct Cell { int level = 0; bool charging = false; };
 struct ScanState { QString device; QString message; std::map<QString, Cell> cells; bool singleBattery = false; };
 
 static void debugLog(const QString &message) {
-    if (!qEnvironmentVariableIsSet("PODPOWER_DEBUG")) return;
+    if (!qEnvironmentVariableIsSet("CACHYOS_AIRPODS_BATTERY_TRAY_DEBUG")) return;
     const QByteArray line = (QDateTime::currentDateTime().toString(Qt::ISODate) + QStringLiteral(" ") + message + QLatin1Char('\n')).toUtf8();
-    if (FILE *f = std::fopen("/tmp/podpower-debug.log", "a")) { std::fwrite(line.constData(), 1, size_t(line.size()), f); std::fclose(f); }
+    if (FILE *f = std::fopen("/tmp/cachyos-airpods-battery-tray-debug.log", "a")) { std::fwrite(line.constData(), 1, size_t(line.size()), f); std::fclose(f); }
 }
 
 static QString commandOutput(const QString &program, const QStringList &args, int timeoutMs = 1000) {
@@ -254,7 +254,7 @@ class BatteryWindow : public QMainWindow {
 public:
     explicit BatteryWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
         setObjectName(QStringLiteral("batteryWindow"));
-        setWindowTitle(QStringLiteral("Podpower — AirPods Battery Status"));
+        setWindowTitle(QStringLiteral("CachyOS AirPods Battery Tray"));
         setWindowIcon(QIcon::fromTheme(QStringLiteral("audio-headphones")));
         resize(520, 250);
         setMinimumSize(460, 220);
@@ -343,7 +343,7 @@ private:
 };
 
 static QString autostartPath() {
-    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/autostart/podpower-tray.desktop");
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/autostart/cachyos-airpods-battery-tray.desktop");
 }
 static bool autostartEnabled() { return QFile::exists(autostartPath()); }
 static bool setAutostart(bool enabled) {
@@ -353,17 +353,17 @@ static bool setAutostart(bool enabled) {
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) return false;
     const QString exe = QCoreApplication::applicationFilePath();
-    const QByteArray data = QStringLiteral("[Desktop Entry]\nType=Application\nName=Podpower Tray\nComment=Show AirPods battery status in the system tray\nExec=\"%1\"\nIcon=audio-headphones\nTerminal=false\nX-KDE-autostart-after=panel\n").arg(exe).toUtf8();
+    const QByteArray data = QStringLiteral("[Desktop Entry]\nType=Application\nName=CachyOS AirPods Battery Tray\nComment=Show AirPods battery status in the system tray\nExec=\"%1\"\nIcon=audio-headphones\nTerminal=false\nX-KDE-autostart-after=panel\n").arg(exe).toUtf8();
     return f.write(data) == data.size();
 }
 
 int main(int argc, char **argv) {
     QApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QStringLiteral("Podpower Tray"));
-    QCoreApplication::setOrganizationName(QStringLiteral("Local"));
+    QCoreApplication::setApplicationName(QStringLiteral("CachyOS AirPods Battery Tray"));
+    QCoreApplication::setOrganizationName(QStringLiteral("CachyOS"));
     if (!QSystemTrayIcon::isSystemTrayAvailable()) { qCritical() << "KDE system tray is unavailable."; return 1; }
 
-    const QString lockPath = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + QStringLiteral("/podpower-tray.lock");
+    const QString lockPath = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + QStringLiteral("/cachyos-airpods-battery-tray.lock");
     QLockFile instanceLock(lockPath);
     instanceLock.setStaleLockTime(0);
     if (!instanceLock.tryLock()) return 0;
@@ -378,7 +378,7 @@ int main(int argc, char **argv) {
     contextMenu.addAction(&startupAction); contextMenu.addSeparator(); contextMenu.addAction(&quitAction);
     QSystemTrayIcon tray(QIcon::fromTheme(QStringLiteral("audio-headphones")));
     if (tray.icon().isNull()) tray.setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaVolume));
-    tray.setToolTip(QStringLiteral("Podpower · AirPods battery status"));
+    tray.setToolTip(QStringLiteral("CachyOS AirPods Battery Tray"));
     tray.setContextMenu(&contextMenu); tray.show();
 
     Scanner scanner([&batteryWindow](ScanState s) { batteryWindow.updateState(s); });
